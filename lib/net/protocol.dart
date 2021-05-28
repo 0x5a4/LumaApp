@@ -1,5 +1,7 @@
 import 'dart:typed_data';
-import 'package:color/color.dart';
+import 'package:color/color.dart' hide Color;
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
 import 'package:luma/cache.dart';
@@ -50,9 +52,9 @@ class LumaProtocol {
     //Can we even handle the Command?
     if (commandID == notifyCommand) {
       int deviceID = msg[1];
-      LumaValue value = LumaValue.fromid(valueID);
+      LumaValue? value = LumaValue.fromid(valueID);
 
-      if (value == LumaValue.invalid) {
+      if (value == null) {
         print("Unknown Value with id $valueID");
         return null;
       }
@@ -90,8 +92,8 @@ class LumaColorList implements LumaData {
   }
 }
 
-@HiveType(typeId: 1)
 ///A HSV Color Representation that correctly encodes and decodes to the format required by the Luma Protocol
+@HiveType(typeId: 1)
 class LumaColor implements LumaData {
   @HiveField(0)
   late int hue;
@@ -106,11 +108,14 @@ class LumaColor implements LumaData {
     assert(value >= 0 && value <= 100, "Value must be in range 0 to 100, was $value");
   }
 
-  LumaColor.fromRGB(int r, int g, int b) {
+  factory LumaColor.fromColor(Color color) {
+    HSVColor hsv = HSVColor.fromColor(color);
+    return LumaColor(hsv.hue.round(), (hsv.saturation * 100).round(), (hsv.value * 100).round());
+  }
+
+  factory LumaColor.fromRGB(int r, int g, int b) {
     HsvColor hsv = RgbColor(r, g, b).toHsvColor();
-    this.hue = hsv.h.round();
-    this.saturation = hsv.s.round();
-    this.value = hsv.v.round();
+    return LumaColor(hsv.h.round(), hsv.s.round(), hsv.v.round());
   }
 
   factory LumaColor.fromBytes(Uint8List bytes) {
@@ -123,6 +128,10 @@ class LumaColor implements LumaData {
     int saturation = secondByte & 0x7F;
     int value = (thirdByte & 0xFE) >> 1;
     return LumaColor(hue, saturation, value);
+  }
+
+  Color toColor() {
+    return HSVColor.fromAHSV(1, hue.toDouble(), saturation / 100, value / 100).toColor();
   }
 
   @override
@@ -172,7 +181,7 @@ class LumaValue {
     } else if (byte == 1) {
       target.isPowered = true;
     } else if (byte == 0xFF) {
-      target.isPowered = !target.isPowered!;
+      target.isPowered = !target.isPowered;
     }
   });
 
@@ -221,13 +230,14 @@ class LumaValue {
   }
 
   ///Return the LumaValue with the given id. Might be null if that id doesnt exist
-  factory LumaValue.fromid(int id) {
+  static LumaValue? fromid(int id) {
     for (LumaValue val in values) {
       if (val.id == id) {
         return val;
       }
     }
-    return LumaValue.invalid;
+    print("Invalid value id: $id");
+    return null;
   }
 
   ApplyLumaValue get apply => _apply;
@@ -246,7 +256,7 @@ class LumaValue {
 class LumaSpeed implements LumaData {
   final int speed;
 
-  const LumaSpeed._(this.speed);
+  const LumaSpeed(this.speed);
 
   @override
   Uint8List get asBytes {
@@ -259,15 +269,28 @@ class LumaSpeed implements LumaData {
 
 ///Contains every possible animation mode
 class LumaAnimationMode implements LumaData {
-  static const LumaAnimationMode led = LumaAnimationMode._(0, "static");
-  static const LumaAnimationMode rainbow = LumaAnimationMode._(1, "rainbow");
-  static const LumaAnimationMode positive_cycle = LumaAnimationMode._(2, "positive_cycle");
-  static const LumaAnimationMode negative_cycle = LumaAnimationMode._(3, "negative_cycle");
+  static final LumaAnimationMode static = LumaAnimationMode._(0, "static");
+  static final LumaAnimationMode rainbow = LumaAnimationMode._(1, "rainbow");
+  static final LumaAnimationMode positiveCycle = LumaAnimationMode._(2, "positive_cycle");
+  static final LumaAnimationMode negativeCycle = LumaAnimationMode._(3, "negative_cycle");
+  static final List<LumaAnimationMode> _values = [];
 
   final int id;
   final String name;
 
-  const LumaAnimationMode._(this.id, this.name);
+  LumaAnimationMode._(this.id, this.name) {
+    _values.add(this);
+  }
+
+  static LumaAnimationMode? fromid(int id) {
+    for (LumaAnimationMode mode in _values) {
+      if (mode.id == id) {
+        return mode;
+      }
+    }
+    print("Invalid Mode ID: $id");
+    return null;
+  }
 
   @override
   Uint8List get asBytes {
@@ -289,6 +312,10 @@ class LumaPowerValue implements LumaData {
   const LumaPowerValue._invert()
       : this.isInverter = true,
         this.value = false;
+
+  factory LumaPowerValue.fromBool(bool power) {
+    return power ? on : off;
+  }
 
   @override
   Uint8List get asBytes {

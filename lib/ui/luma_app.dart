@@ -9,6 +9,12 @@ import 'package:luma/devices.dart';
 import 'package:luma/net/net.dart';
 import 'package:luma/net/protocol.dart';
 import 'package:luma/ui/lumawidgets.dart';
+import 'package:rxdart/rxdart.dart';
+import 'package:luma/main.dart';
+
+final BehaviorSubject<LumaDevice?> selectedDeviceStream = BehaviorSubject.seeded(null);
+
+LumaDevice? get selectedDevice => selectedDeviceStream.hasValue ? selectedDeviceStream.value : null;
 
 class LumaApp extends StatefulWidget {
   const LumaApp();
@@ -25,7 +31,7 @@ class _LumaAppState extends State<LumaApp> {
     Future.wait([
       initializeApp(),
       Future.delayed(Duration(
-        seconds: 2,
+        seconds: startupDelay,
       ))
     ]).then((value) => setState(() => isLoaded = true));
   }
@@ -34,15 +40,45 @@ class _LumaAppState extends State<LumaApp> {
   Widget build(BuildContext context) {
     if (isLoaded) {
       return Scaffold(
+        resizeToAvoidBottomInset: false,
         backgroundColor: Theme.of(context).backgroundColor,
         drawerScrimColor: Color(0x00000000),
         drawerEdgeDragWidth: MediaQuery.of(context).size.width * 0.2,
+        body: Column(
+          children: [
+            SizedBox(
+              width: double.infinity,
+              height: MediaQuery.of(context).viewPadding.top + titleBarHeight,
+              child: ColoredBox(
+                color: Theme.of(context).focusColor,
+                child: StreamBuilder<LumaDevice?>(
+                    stream: selectedDeviceStream,
+                    builder: (context, snapshot) {
+                      LumaDevice? device = snapshot.data;
+                      String caption = "None";
+                      if (device != null) {
+                        caption = device.name;
+                      }
+
+                      return SafeArea(
+                        child: Center(
+                          child: Text(caption, style: Theme.of(context).textTheme.headline2),
+                        ),
+                      );
+                    }),
+              ),
+            ),
+            Expanded(
+              child: DeviceView(selectedDeviceStream),
+            ),
+          ],
+        ),
 
         ///Available Devices
         drawer: DeviceDrawer(
           exitButtonAlignment: Alignment.topRight,
           clipBorderRadius: BorderRadius.horizontal(
-            right: Radius.circular(20),
+            right: Radius.circular(rectClipRadius),
           ),
           caption: Text(
             "Your Devices",
@@ -53,7 +89,13 @@ class _LumaAppState extends State<LumaApp> {
               stream: Cache.onStateListUpdate.map((stateList) {
                 return stateList.map<LumaDevice>((state) => LumaDevice(state));
               }),
-              builder: (context, snapshot) => asListView<LumaDevice>(snapshot),
+              builder: (context, snapshot) => asListView<LumaDevice>(
+                snapshot,
+                onTap: (device) {
+                  selectedDeviceStream.add(device);
+                  Navigator.pop(context);
+                },
+              ),
             ),
           ),
         ),
@@ -62,7 +104,7 @@ class _LumaAppState extends State<LumaApp> {
         endDrawer: DeviceDrawer(
           exitButtonAlignment: Alignment.topLeft,
           clipBorderRadius: BorderRadius.horizontal(
-            left: Radius.circular(20),
+            left: Radius.circular(rectClipRadius),
           ),
           caption: Text(
             "Available",
@@ -144,7 +186,7 @@ class _LumaAppState extends State<LumaApp> {
   Future<void> initializeApp() async {
     //Hive
     await Hive.initFlutter("luma");
-    Hive.registerAdapter(CachedDeviceAdapter());
+    Hive.registerAdapter(CachedDeviceStateAdapter());
     Hive.registerAdapter(LumaColorAdapter());
 
     //Run protected to catch async errors
@@ -160,13 +202,12 @@ class _LumaAppState extends State<LumaApp> {
 
     if (const bool.fromEnvironment("LUMA_TEST")) {
       print("Adding test entries...");
-      Cache.saveState(CachedDeviceState(0, "test1", "192.168.0.55", 65000, [], false, 0, 2, 150));
-      Cache.saveState(CachedDeviceState(1, "test2", "192.168.0.55", 65000, [], false, 0, 2, 150));
-      Cache.saveState(CachedDeviceState(2, "test3", "192.168.0.55", 65000, [], false, 0, 2, 150));
-      Cache.saveState(CachedDeviceState(3, "test4", "192.168.0.55", 65000, [], false, 0, 2, 150));
-      Cache.saveState(CachedDeviceState(4, "test5", "192.168.0.55", 65000, [], false, 0, 2, 150));
-      Cache.saveState(CachedDeviceState(5, "test6", "192.168.0.55", 65000, [], false, 0, 2, 150));
-      Cache.saveState(CachedDeviceState(5, "test7", "192.168.0.55", 65000, [], false, 0, 2, 150));
+      Cache.saveState(CachedDeviceState(0, "test1", "192.168.0.55", 65000, [], true, 0, 4, 300));
+      Cache.saveState(CachedDeviceState(1, "test2", "192.168.0.55", 65000, [], false, 0, 10, 30));
+      Cache.saveState(CachedDeviceState(2, "test3", "192.168.0.55", 65000, [], false, 1, 8, 100));
+      Cache.saveState(CachedDeviceState(3, "test4", "192.168.0.55", 65000, [], true, 2, 9, 150));
+      Cache.saveState(CachedDeviceState(4, "test5", "192.168.0.55", 65000, [], true, 3, 3, 70));
+      Cache.saveState(CachedDeviceState(5, "test6", "192.168.0.55", 65000, [], false, 0, 1, 60));
     }
   }
 }

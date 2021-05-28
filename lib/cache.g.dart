@@ -6,7 +6,7 @@ part of 'cache.dart';
 // TypeAdapterGenerator
 // **************************************************************************
 
-class CachedDeviceAdapter extends TypeAdapter<CachedDeviceState> {
+class CachedDeviceStateAdapter extends TypeAdapter<CachedDeviceState> {
   @override
   final int typeId = 0;
 
@@ -17,15 +17,15 @@ class CachedDeviceAdapter extends TypeAdapter<CachedDeviceState> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return CachedDeviceState(
-      fields[8] as int,
+      fields[3] as int,
       fields[0] as String,
       fields[1] as String,
       fields[2] as int,
-      (fields[3] as List?)?.cast<LumaColor>(),
-      fields[4] as bool?,
-      fields[5] as int?,
-      fields[6] as int?,
-      fields[7] as int?,
+      (fields[4] as List).cast<LumaColor>(),
+      fields[5] as bool,
+      fields[6] as int,
+      fields[7] as int,
+      fields[8] as int,
     );
   }
 
@@ -34,23 +34,23 @@ class CachedDeviceAdapter extends TypeAdapter<CachedDeviceState> {
     writer
       ..writeByte(9)
       ..writeByte(0)
-      ..write(obj.name)
+      ..write(obj._name)
       ..writeByte(1)
-      ..write(obj.address)
+      ..write(obj._address)
       ..writeByte(2)
-      ..write(obj.port)
+      ..write(obj._port)
       ..writeByte(3)
-      ..write(obj.colors)
+      ..write(obj._deviceid)
       ..writeByte(4)
-      ..write(obj.isPowered)
+      ..write(obj.colors)
       ..writeByte(5)
-      ..write(obj.mode)
+      ..write(obj.isPowered)
       ..writeByte(6)
-      ..write(obj.speed)
+      ..write(obj.mode)
       ..writeByte(7)
-      ..write(obj.ledNum)
+      ..write(obj.speed)
       ..writeByte(8)
-      ..write(obj.deviceid);
+      ..write(obj.ledNum);
   }
 
   @override
@@ -59,7 +59,7 @@ class CachedDeviceAdapter extends TypeAdapter<CachedDeviceState> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is CachedDeviceAdapter &&
+      other is CachedDeviceStateAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

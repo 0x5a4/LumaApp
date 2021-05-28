@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 
 import 'package:luma/devices.dart';
+import 'package:luma/net/net.dart';
 import 'package:luma/net/protocol.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -60,15 +63,17 @@ class CachedDeviceState with HiveObjectMixin {
   @HiveField(3)
   int _deviceid;
   @HiveField(4)
-  List<LumaColor>? colors = <LumaColor>[];
+  List<LumaColor> colors = <LumaColor>[];
   @HiveField(5)
-  bool? isPowered;
+  bool isPowered = false;
   @HiveField(6)
-  int? mode;
+  int mode = 0;
   @HiveField(7)
-  int? speed;
+  int speed = 0;
   @HiveField(8)
-  int? ledNum;
+  int ledNum = 0;
+
+  InternetAddress _addressObj;
 
   CachedDeviceState(
     this._deviceid,
@@ -80,9 +85,9 @@ class CachedDeviceState with HiveObjectMixin {
     this.mode,
     this.speed,
     this.ledNum,
-  );
+  ) : this._addressObj = InternetAddress(_address);
 
-  CachedDeviceState.stateless(this._deviceid, this._name, this._address, this._port);
+  CachedDeviceState.stateless(this._deviceid, this._name, this._address, this._port) : this._addressObj = InternetAddress(_address);
 
   bool equalsExact(CachedDeviceState other) {
     return other.deviceid == this.deviceid &&
@@ -117,4 +122,54 @@ class CachedDeviceState with HiveObjectMixin {
   int get deviceid => _deviceid;
 
   int get port => _port;
+
+  InternetAddress get addressObj => _addressObj;
+
+  set address(String address) {
+    this._address = address;
+    this._addressObj = InternetAddress(address);
+  }
+
+  ///Update Methods
+
+  void updateColors(List<LumaColor> colors) {
+    if (_updateHost(LumaValue.led, LumaColorList.fromList(colors)) != 0) {
+      this.colors = colors;
+      this.save();
+    }
+  }
+
+  void updatePower(bool power) {
+    if (_updateHost(LumaValue.power, LumaPowerValue.fromBool(power)) != 0) {
+      this.isPowered = power;
+      this.save();
+    }
+  }
+
+  void updateMode(int mode) {
+    if (_updateHost(LumaValue.mode, LumaAnimationMode.fromid(mode)) != 0) {
+      this.mode = mode;
+      this.save();
+    }
+  }
+
+  void updateSpeed(int speed) {
+    if (_updateHost(LumaValue.speed, LumaSpeed(speed)) != 0) {
+      this.speed = speed;
+      this.save();
+    }
+  }
+
+  int _updateHost(LumaValue value, LumaData? data) {
+    if (data == null) return 0;
+    return DeviceSocket.send(
+      _addressObj,
+      port,
+      LumaProtocol.constructMsg(
+        LumaProtocol.setCommand,
+        value,
+        data: data,
+      ),
+    );
+  }
 }

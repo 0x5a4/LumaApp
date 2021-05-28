@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:luma/devices.dart';
+import 'package:luma/main.dart';
 
 class DeviceDrawer extends StatelessWidget {
   final Widget child;
@@ -20,7 +21,14 @@ class DeviceDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: MediaQuery.of(context).size.width * 0.75,
-      height: MediaQuery.of(context).size.height * 0.8,
+      height: computeHeight(MediaQuery.of(context)),
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: Colors.black.withOpacity(0.4),
+          width: 1.5
+        ),
+        borderRadius: clipBorderRadius,
+      ),
       child: ClipRRect(
         borderRadius: clipBorderRadius,
         child: ColoredBox(
@@ -60,6 +68,12 @@ class DeviceDrawer extends StatelessWidget {
         ),
       ),
     );
+  }
+  
+  double computeHeight(MediaQueryData query) {
+    double screenHeight = query.size.height;
+    double actual = screenHeight - query.viewPadding.top * 2;
+    return actual - 20;
   }
 }
 

@@ -70,7 +70,7 @@ class DeviceUpdate {
 class DeviceDiscoverer {
   static const mdnsServiceName = "_luma._tcp";
   static final MDnsClient _client = MDnsClient();
-  static final BehaviorSubject<List<StatelessLumaDevice>> _deviceCache = BehaviorSubject();
+  static final BehaviorSubject<List<StatelessLumaDevice>> _deviceCache = BehaviorSubject.seeded([]);
   static bool _isRunning = false;
 
   static Future<void> start() async {
